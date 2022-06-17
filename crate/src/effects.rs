@@ -12,6 +12,7 @@ use perlin2d::PerlinNoise2D;
 use std::collections::HashMap;
 use std::f64;
 use wasm_bindgen::prelude::*;
+use crate::channels::RgbChannel;
 
 /// Adds an offset to the image by a certain number of pixels.
 ///
@@ -25,17 +26,16 @@ use wasm_bindgen::prelude::*;
 ///
 /// ```no_run
 /// // For example, to offset pixels by 30 pixels on the red channel:
+/// use photon_rs::channels::RgbChannel;
 /// use photon_rs::effects::offset;
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// offset(&mut img, 0_usize, 30_u32);
+/// offset(&mut img, RgbChannel::Red, 30_u32);
 /// ```
 #[wasm_bindgen]
-pub fn offset(photon_image: &mut PhotonImage, channel_index: usize, offset: u32) {
-    if channel_index > 2 {
-        panic!("Invalid channel index passed. Channel1 must be equal to 0, 1, or 2.");
-    }
+pub fn offset(photon_image: &mut PhotonImage, channel: RgbChannel, offset: u32) {
+    let channel_index = channel as usize;
 
     let mut img = helpers::dyn_image_from_raw(photon_image);
     let (width, height) = img.dimensions();
@@ -101,7 +101,7 @@ pub fn offset(photon_image: &mut PhotonImage, channel_index: usize, offset: u32)
 /// ```
 #[wasm_bindgen]
 pub fn offset_red(img: &mut PhotonImage, offset_amt: u32) {
-    offset(img, 0, offset_amt)
+    offset(img, RgbChannel::Red, offset_amt)
 }
 
 /// Adds an offset to the green channel by a certain number of pixels.
@@ -121,7 +121,7 @@ pub fn offset_red(img: &mut PhotonImage, offset_amt: u32) {
 /// ```
 #[wasm_bindgen]
 pub fn offset_green(img: &mut PhotonImage, offset_amt: u32) {
-    offset(img, 1, offset_amt)
+    offset(img, RgbChannel::Green, offset_amt)
 }
 
 /// Adds an offset to the blue channel by a certain number of pixels.
@@ -141,7 +141,7 @@ pub fn offset_green(img: &mut PhotonImage, offset_amt: u32) {
 /// ```
 #[wasm_bindgen]
 pub fn offset_blue(img: &mut PhotonImage, offset_amt: u32) {
-    offset(img, 2, offset_amt)
+    offset(img, RgbChannel::Blue, offset_amt)
 }
 
 /// Adds multiple offsets to the image by a certain number of pixels (on two channels).
@@ -153,25 +153,22 @@ pub fn offset_blue(img: &mut PhotonImage, offset_amt: u32) {
 ///
 /// ```no_run
 /// // For example, to add a 30-pixel offset to both the red and blue channels:
+/// use photon_rs::channels::RgbChannel;
 /// use photon_rs::effects::multiple_offsets;
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// multiple_offsets(&mut img, 30_u32, 0_usize, 2_usize);
+/// multiple_offsets(&mut img, 30_u32, RgbChannel::Red, RgbChannel::Blue);
 /// ```
 #[wasm_bindgen]
 pub fn multiple_offsets(
     mut photon_image: &mut PhotonImage,
     offset: u32,
-    channel_index: usize,
-    channel_index2: usize,
+    channel1: RgbChannel,
+    channel2: RgbChannel,
 ) {
-    if channel_index > 2 {
-        panic!("Invalid channel index passed. Channel1 must be equal to 0, 1, or 2.");
-    }
-    if channel_index2 > 2 {
-        panic!("Invalid channel index passed. Channel2 must be equal to 0, 1, or 2.");
-    }
+    let channel1_index = channel1 as usize;
+    let channel2_index = channel2 as usize;
     let mut img = helpers::dyn_image_from_raw(photon_image);
     let (width, height) = img.dimensions();
 
@@ -181,13 +178,13 @@ pub fn multiple_offsets(
         if x + offset < width - 1 && y + offset < height - 1 {
             let offset_px = img.get_pixel(x + offset, y);
 
-            px[channel_index] = offset_px[channel_index];
+            px[channel1_index] = offset_px[channel1_index];
         }
 
         if x as i32 - offset as i32 > 0 && y as i32 - offset as i32 > 0 {
             let offset_px2 = img.get_pixel(x - offset, y);
 
-            px[channel_index2] = offset_px2[channel_index2];
+            px[channel2_index] = offset_px2[channel2_index];
         }
 
         img.put_pixel(x, y, px);
