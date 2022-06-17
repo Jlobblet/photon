@@ -244,12 +244,28 @@ impl Rgb {
     }
 }
 
-impl From<Vec<u8>> for Rgb {
-    fn from(vec: Vec<u8>) -> Self {
-        if vec.len() != 3 {
-            panic!("Vec length must be equal to 3.")
+impl From<[u8; 3]> for Rgb {
+    fn from(rgb: [u8; 3]) -> Self {
+        Rgb {
+            r: rgb[0],
+            g: rgb[1],
+            b: rgb[2],
         }
-        Rgb::new(vec[0], vec[1], vec[2])
+    }
+}
+
+impl TryFrom<Vec<u8>> for Rgb {
+    type Error = ();
+
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        if bytes.len() != 3 {
+            return Err(());
+        }
+        Ok(Rgb {
+            r: bytes[0],
+            g: bytes[1],
+            b: bytes[2],
+        })
     }
 }
 
@@ -312,12 +328,30 @@ impl Rgba {
     }
 }
 
-impl From<Vec<u8>> for Rgba {
-    fn from(vec: Vec<u8>) -> Self {
-        if vec.len() != 4 {
-            panic!("Vec length must be equal to 4.")
+impl From<[u8; 4]> for Rgba {
+    fn from(rgba: [u8; 4]) -> Self {
+        Rgba {
+            r: rgba[0],
+            g: rgba[1],
+            b: rgba[2],
+            a: rgba[3],
         }
-        Rgba::new(vec[0], vec[1], vec[2], vec[3])
+    }
+}
+
+impl TryFrom<Vec<u8>> for Rgba {
+    type Error = ();
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        if value.len() != 4 {
+            return Err(());
+        }
+        Ok(Rgba {
+            r: value[0],
+            g: value[1],
+            b: value[2],
+            a: value[3],
+        })
     }
 }
 
