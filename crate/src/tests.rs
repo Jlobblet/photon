@@ -26,7 +26,8 @@ mod test {
         ];
 
         let mut photon_image = PhotonImage::new(raw_pix, width, height);
-        alter_red_channel(&mut photon_image, 40).expect("Should be able to alter red channel");
+        alter_red_channel(&mut photon_image, 40)
+            .expect("Should be able to alter red channel");
         assert_eq!(photon_image.raw_pixels, altered_r_channel_pix);
     }
 
@@ -52,7 +53,8 @@ mod test {
         ];
 
         let mut photon_image = PhotonImage::new(raw_pix, width, height);
-        alter_blue_channel(&mut photon_image, 40).expect("Should be able to alter blue channel");
+        alter_blue_channel(&mut photon_image, 40)
+            .expect("Should be able to alter blue channel");
         assert_eq!(photon_image.raw_pixels, altered_b_channel_pix);
     }
 
@@ -78,7 +80,8 @@ mod test {
         ];
 
         let mut photon_image = PhotonImage::new(raw_pix, width, height);
-        alter_green_channel(&mut photon_image, 40).expect("Should be able to alter green channel");
+        alter_green_channel(&mut photon_image, 40)
+            .expect("Should be able to alter green channel");
         assert_eq!(photon_image.raw_pixels, altered_g_channel_pix);
     }
 

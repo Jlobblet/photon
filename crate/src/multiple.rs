@@ -8,8 +8,8 @@ use image::Pixel as ImagePixel;
 use image::{DynamicImage, GenericImageView, RgbaImage};
 use palette::{Blend, Gradient, Lab, Lch, LinSrgba, Srgb, Srgba};
 use std::cmp::{max, min};
-use wasm_bindgen::prelude::*;
 use thiserror::Error;
+use wasm_bindgen::prelude::*;
 
 /// Add a watermark to an image.
 ///

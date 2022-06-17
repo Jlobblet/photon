@@ -1,8 +1,8 @@
 extern crate photon_rs;
 extern crate time;
 
-use photon_rs::native::{open_image, save_image};
 use photon_rs::channels::alter_red_channel;
+use photon_rs::native::{open_image, save_image};
 use time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

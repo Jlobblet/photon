@@ -1,5 +1,6 @@
 //! Special effects.
 
+use crate::channels::RgbChannel;
 use crate::helpers;
 use crate::iter::ImageIterator;
 use crate::{PhotonImage, Rgb};
@@ -12,7 +13,6 @@ use perlin2d::PerlinNoise2D;
 use std::collections::HashMap;
 use std::f64;
 use wasm_bindgen::prelude::*;
-use crate::channels::RgbChannel;
 
 /// Adds an offset to the image by a certain number of pixels.
 ///

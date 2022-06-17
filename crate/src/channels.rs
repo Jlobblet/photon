@@ -1,7 +1,7 @@
 //! Channel manipulation.
 
-use std::fmt::{Display, Formatter};
 use image::Pixel as OtherPixel;
+use std::fmt::{Display, Formatter};
 
 use image::{GenericImage, GenericImageView};
 
@@ -9,8 +9,8 @@ use crate::helpers;
 use crate::iter::ImageIterator;
 use crate::{PhotonImage, Rgb};
 use palette::{Hue, Lab, Lch, Saturate, Shade, Srgb, Srgba};
-use wasm_bindgen::prelude::*;
 use thiserror::Error;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -76,7 +76,11 @@ impl From<AlterChannelError> for JsValue {
 /// ```
 /// **Note**: Note the use of a minus symbol when decreasing the channel.
 #[wasm_bindgen]
-pub fn alter_channel(img: &mut PhotonImage, channel: RgbChannel, amt: i16) -> Result<(), AlterChannelError> {
+pub fn alter_channel(
+    img: &mut PhotonImage,
+    channel: RgbChannel,
+    amt: i16,
+) -> Result<(), AlterChannelError> {
     if amt > 255 {
         return Err(AlterChannelError::InvalidAmount(channel, amt));
     }
@@ -109,7 +113,10 @@ pub fn alter_channel(img: &mut PhotonImage, channel: RgbChannel, amt: i16) -> Re
 /// alter_red_channel(&mut img, 10_i16).expect("Channel should be altered");
 /// ```
 #[wasm_bindgen]
-pub fn alter_red_channel(photon_image: &mut PhotonImage, amt: i16) -> Result<(), AlterChannelError> {
+pub fn alter_red_channel(
+    photon_image: &mut PhotonImage,
+    amt: i16,
+) -> Result<(), AlterChannelError> {
     alter_channel(photon_image, RgbChannel::Red, amt)
 }
 
@@ -130,7 +137,10 @@ pub fn alter_red_channel(photon_image: &mut PhotonImage, amt: i16) -> Result<(),
 /// alter_green_channel(&mut img, 20_i16).expect("Channel should be altered");
 /// ```
 #[wasm_bindgen]
-pub fn alter_green_channel(img: &mut PhotonImage, amt: i16) -> Result<(), AlterChannelError> {
+pub fn alter_green_channel(
+    img: &mut PhotonImage,
+    amt: i16,
+) -> Result<(), AlterChannelError> {
     alter_channel(img, RgbChannel::Green, amt)
 }
 
@@ -151,7 +161,10 @@ pub fn alter_green_channel(img: &mut PhotonImage, amt: i16) -> Result<(), AlterC
 /// alter_blue_channel(&mut img, 10_i16).expect("Channel should be altered");
 /// ```
 #[wasm_bindgen]
-pub fn alter_blue_channel(img: &mut PhotonImage, amt: i16) -> Result<(), AlterChannelError> {
+pub fn alter_blue_channel(
+    img: &mut PhotonImage,
+    amt: i16,
+) -> Result<(), AlterChannelError> {
     alter_channel(img, RgbChannel::Blue, amt)
 }
 
@@ -202,7 +215,6 @@ pub fn alter_two_channels(
     }
 
     Ok(())
-
 }
 
 /// Increment all 3 channels' values by adding an amt to each channel per pixel.
@@ -225,7 +237,12 @@ pub fn alter_two_channels(
 /// alter_channels(&mut img, 10_i16, 20_i16, 50_i16).expect("Alteration should succeed");
 /// ```
 #[wasm_bindgen]
-pub fn alter_channels(img: &mut PhotonImage, r_amt: i16, g_amt: i16, b_amt: i16) -> Result<(), AlterChannelError> {
+pub fn alter_channels(
+    img: &mut PhotonImage,
+    r_amt: i16,
+    g_amt: i16,
+    b_amt: i16,
+) -> Result<(), AlterChannelError> {
     if r_amt > 255 {
         return Err(AlterChannelError::InvalidAmount(RgbChannel::Red, r_amt));
     }
