@@ -9,6 +9,7 @@ use image::{DynamicImage, GenericImageView, RgbaImage};
 use palette::{Blend, Gradient, Lab, Lch, LinSrgba, Srgb, Srgba};
 use std::cmp::{max, min};
 use wasm_bindgen::prelude::*;
+use thiserror::Error;
 
 /// Add a watermark to an image.
 ///
@@ -36,6 +37,18 @@ pub fn watermark(mut img: &mut PhotonImage, watermark: &PhotonImage, x: u32, y: 
     img.raw_pixels = dyn_img.to_bytes();
 }
 
+#[derive(Error, Debug)]
+pub enum BlendError {
+    #[error("First image parameter must be smaller than second image parameter. To fix, swap img and img2 params.")]
+    IncompatibleSizes,
+}
+
+impl From<BlendError> for JsValue {
+    fn from(error: BlendError) -> Self {
+        JsValue::from(format!("{}", error))
+    }
+}
+
 /// Blend two images together.
 ///
 /// The `blend_mode` (3rd param) determines which blending mode to use; change this for varying effects.
@@ -57,14 +70,14 @@ pub fn watermark(mut img: &mut PhotonImage, watermark: &PhotonImage, x: u32, y: 
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
 /// let img2 = open_image("img2.jpg").expect("File should open");
-/// blend(&mut img, &img2, "multiply");
+/// blend(&mut img, &img2, "multiply").expect("Blend should work");
 /// ```
 #[wasm_bindgen]
 pub fn blend(
     mut photon_image: &mut PhotonImage,
     photon_image2: &PhotonImage,
     blend_mode: &str,
-) {
+) -> Result<(), BlendError> {
     let img = crate::helpers::dyn_image_from_raw(photon_image);
     let img2 = crate::helpers::dyn_image_from_raw(photon_image2);
 
@@ -72,7 +85,7 @@ pub fn blend(
     let (width2, height2) = img2.dimensions();
 
     if width > width2 || height > height2 {
-        panic!("First image parameter must be smaller than second image parameter. To fix, swap img and img2 params.");
+        return Err(BlendError::IncompatibleSizes);
     }
     let mut img = img.to_rgba8();
     let img2 = img2.to_rgba8();
@@ -135,6 +148,7 @@ pub fn blend(
     }
     let dynimage = ImageRgba8(img);
     photon_image.raw_pixels = dynimage.to_bytes();
+    Ok(())
 }
 
 // #[wasm_bindgen]
@@ -260,10 +274,10 @@ pub fn create_gradient(width: u32, height: u32) -> PhotonImage {
 
 /// Apply a gradient to an image.
 #[wasm_bindgen]
-pub fn apply_gradient(image: &mut PhotonImage) {
+pub fn apply_gradient(image: &mut PhotonImage) -> Result<(), BlendError> {
     let gradient = create_gradient(image.width, image.height);
 
-    blend(image, &gradient, "overlay");
+    blend(image, &gradient, "overlay")
 }
 
 /// Build a simple horizontal gradient.
@@ -453,6 +467,12 @@ fn build_axial_gradient(
     gradient
 }
 
+#[derive(Error, Debug)]
+pub enum FadeError {
+    #[error("Images must have the same size.")]
+    DifferentSizes,
+}
+
 /// Fades one image into another.
 ///
 /// For horizontal fading, set both `start_y` and `end_y` to the same value.
@@ -483,9 +503,9 @@ pub fn fade(
     end_x: i32,
     start_y: i32,
     end_y: i32,
-) -> PhotonImage {
+) -> Result<PhotonImage, FadeError> {
     if img1.width != img2.width || img1.height != img2.height {
-        panic!("Images must have the same size.");
+        return Err(FadeError::DifferentSizes);
     }
 
     let width = img1.width as usize;
@@ -537,5 +557,5 @@ pub fn fade(
         }
     }
 
-    PhotonImage::new(buf_res, img1.width, img1.height)
+    Ok(PhotonImage::new(buf_res, img1.width, img1.height))
 }
