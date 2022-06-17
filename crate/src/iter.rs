@@ -94,17 +94,19 @@ mod test {
 
     #[test]
     fn test_image_iter_with_dimension() {
-        let mut item = DATA.iter();
-        for i in ImageIterator::with_dimension(&(WIDTH, HEIGHT)) {
-            assert_eq!(i, *item.next().unwrap());
+        let mut expected = DATA.iter();
+        let mut actual = ImageIterator::with_dimension(&(WIDTH, HEIGHT));
+        for (e, a) in expected.zip(actual) {
+            assert_eq!(e, a);
         }
     }
 
     #[test]
     fn test_image_iter_new() {
-        let mut item = DATA.iter();
-        for (x, y) in ImageIterator::new(WIDTH, HEIGHT) {
-            assert_eq!((x, y), *item.next().unwrap());
+        let mut expected = DATA.iter();
+        let mut actual = ImageIterator::new(WIDTH, HEIGHT);
+        for (e, a) in expected.zip(actual) {
+            assert_eq!(e, a);
         }
     }
 
