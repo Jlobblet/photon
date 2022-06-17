@@ -1,5 +1,6 @@
 //! Channel manipulation.
 
+use std::fmt::{Display, Formatter};
 use image::Pixel as OtherPixel;
 
 use image::{GenericImage, GenericImageView};
@@ -9,6 +10,38 @@ use crate::iter::ImageIterator;
 use crate::{PhotonImage, Rgb};
 use palette::{Hue, Lab, Lch, Saturate, Shade, Srgb, Srgba};
 use wasm_bindgen::prelude::*;
+use thiserror::Error;
+
+#[wasm_bindgen]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum RgbChannel {
+    Red = 0,
+    Green = 1,
+    Blue = 2,
+}
+
+impl Display for RgbChannel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            RgbChannel::Red => "Red",
+            RgbChannel::Green => "Green",
+            RgbChannel::Blue => "Blue",
+        };
+        write!(f, "{}", name)
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum AlterChannelError {
+    #[error("Amount to increment/decrement {0} channel should be between -255 and 255 (was {1})")]
+    InvalidAmount(RgbChannel, i16),
+}
+
+impl From<AlterChannelError> for JsValue {
+    fn from(error: AlterChannelError) -> Self {
+        JsValue::from(format!("{}", error))
+    }
+}
 
 /// Alter a select channel by incrementing or decrementing its value by a constant.
 ///
@@ -23,11 +56,11 @@ use wasm_bindgen::prelude::*;
 ///
 /// ```no_run
 /// // For example, to increase the Red channel for all pixels by 10:
-/// use photon_rs::channels::alter_channel;
-/// use photon_rs::native::{open_image};
+/// use photon_rs::channels::{alter_channel, RgbChannel};
+/// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// alter_channel(&mut img, 0_usize, 10_i16);
+/// alter_channel(&mut img, RgbChannel::Red, 10_i16).expect("Channel should be altered");
 /// ```
 ///
 /// Adds a constant to a select R, G, or B channel's value.
@@ -35,27 +68,28 @@ use wasm_bindgen::prelude::*;
 /// ### Decrease a channel's value
 /// // For example, to decrease the Green channel for all pixels by 20:
 /// ```no_run
-/// use photon_rs::channels::alter_channel;
+/// use photon_rs::channels::{alter_channel, RgbChannel};
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// alter_channel(&mut img, 1_usize, -20_i16);
+/// alter_channel(&mut img, RgbChannel::Green, -20_i16).expect("Channel should be altered");
 /// ```
 /// **Note**: Note the use of a minus symbol when decreasing the channel.
 #[wasm_bindgen]
-pub fn alter_channel(img: &mut PhotonImage, channel: usize, amt: i16) {
-    if channel > 2 {
-        panic!("Invalid channel index passed. Channel must be 0, 1, or 2 (Red=0, Green=1, Blue=2)");
-    }
+pub fn alter_channel(img: &mut PhotonImage, channel: RgbChannel, amt: i16) -> Result<(), AlterChannelError> {
     if amt > 255 {
-        panic!("Amount to increment/decrement should be between -255 and 255");
+        return Err(AlterChannelError::InvalidAmount(channel, amt));
     }
+
+    let channel = channel as usize;
     let end = img.raw_pixels.len() - 4;
 
     for i in (channel..end).step_by(4) {
         let inc_val: i16 = img.raw_pixels[i] as i16 + amt as i16;
         img.raw_pixels[i] = inc_val.clamp(0, 255) as u8;
     }
+
+    Ok(())
 }
 
 /// Increment or decrement every pixel's Red channel by a constant.
@@ -72,11 +106,11 @@ pub fn alter_channel(img: &mut PhotonImage, channel: usize, amt: i16) {
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// alter_red_channel(&mut img, 10_i16);
+/// alter_red_channel(&mut img, 10_i16).expect("Channel should be altered");
 /// ```
 #[wasm_bindgen]
-pub fn alter_red_channel(photon_image: &mut PhotonImage, amt: i16) {
-    alter_channel(photon_image, 0, amt)
+pub fn alter_red_channel(photon_image: &mut PhotonImage, amt: i16) -> Result<(), AlterChannelError> {
+    alter_channel(photon_image, RgbChannel::Red, amt)
 }
 
 /// Increment or decrement every pixel's Green channel by a constant.
@@ -93,11 +127,11 @@ pub fn alter_red_channel(photon_image: &mut PhotonImage, amt: i16) {
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// alter_green_channel(&mut img, 20_i16);
+/// alter_green_channel(&mut img, 20_i16).expect("Channel should be altered");
 /// ```
 #[wasm_bindgen]
-pub fn alter_green_channel(img: &mut PhotonImage, amt: i16) {
-    alter_channel(img, 1, amt)
+pub fn alter_green_channel(img: &mut PhotonImage, amt: i16) -> Result<(), AlterChannelError> {
+    alter_channel(img, RgbChannel::Green, amt)
 }
 
 /// Increment or decrement every pixel's Blue channel by a constant.
@@ -114,11 +148,11 @@ pub fn alter_green_channel(img: &mut PhotonImage, amt: i16) {
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// alter_blue_channel(&mut img, 10_i16);
+/// alter_blue_channel(&mut img, 10_i16).expect("Channel should be altered");
 /// ```
 #[wasm_bindgen]
-pub fn alter_blue_channel(img: &mut PhotonImage, amt: i16) {
-    alter_channel(img, 2, amt)
+pub fn alter_blue_channel(img: &mut PhotonImage, amt: i16) -> Result<(), AlterChannelError> {
+    alter_channel(img, RgbChannel::Blue, amt)
 }
 
 /// Increment/decrement two channels' values simultaneously by adding an amt to each channel per pixel.
@@ -134,32 +168,29 @@ pub fn alter_blue_channel(img: &mut PhotonImage, amt: i16) {
 ///
 /// ```no_run
 /// // For example, to increase the values of the Red and Blue channels per pixel:
-/// use photon_rs::channels::alter_two_channels;
+/// use photon_rs::channels::{alter_two_channels, RgbChannel};
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// alter_two_channels(&mut img, 0_usize, 10_i16, 2_usize, 20_i16);
+/// alter_two_channels(&mut img, RgbChannel::Red, 10_i16, RgbChannel::Blue, 20_i16).expect("Channels should be altered");
 /// ```
 #[wasm_bindgen]
 pub fn alter_two_channels(
     img: &mut PhotonImage,
-    channel1: usize,
+    channel1: RgbChannel,
     amt1: i16,
-    channel2: usize,
+    channel2: RgbChannel,
     amt2: i16,
-) {
-    if channel1 > 2 {
-        panic!("Invalid channel index passed. Channel1 must be equal to 0, 1, or 2.");
-    }
-    if channel2 > 2 {
-        panic!("Invalid channel index passed. Channel2 must be equal to 0, 1, or 2");
-    }
+) -> Result<(), AlterChannelError> {
     if amt1 > 255 {
-        panic!("Amount to inc/dec channel by should be between -255 and 255");
+        return Err(AlterChannelError::InvalidAmount(channel1, amt1));
     }
     if amt2 > 255 {
-        panic!("Amount to inc/dec channel by should be between -255 and 255");
+        return Err(AlterChannelError::InvalidAmount(channel2, amt2));
     }
+
+    let channel1 = channel1 as usize;
+    let channel2 = channel2 as usize;
     let end = img.raw_pixels.len() - 4;
 
     for i in (0..end).step_by(4) {
@@ -169,6 +200,9 @@ pub fn alter_two_channels(
         img.raw_pixels[i + channel1] = inc_val1.clamp(0, 255) as u8;
         img.raw_pixels[i + channel2] = inc_val2.clamp(0, 255) as u8;
     }
+
+    Ok(())
+
 }
 
 /// Increment all 3 channels' values by adding an amt to each channel per pixel.
@@ -188,18 +222,18 @@ pub fn alter_two_channels(
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// alter_channels(&mut img, 10_i16, 20_i16, 50_i16);
+/// alter_channels(&mut img, 10_i16, 20_i16, 50_i16).expect("Alteration should succeed");
 /// ```
 #[wasm_bindgen]
-pub fn alter_channels(img: &mut PhotonImage, r_amt: i16, g_amt: i16, b_amt: i16) {
+pub fn alter_channels(img: &mut PhotonImage, r_amt: i16, g_amt: i16, b_amt: i16) -> Result<(), AlterChannelError> {
     if r_amt > 255 {
-        panic!("Invalid r_amt passed. Amount to inc/dec channel by should be between -255 and 255");
+        return Err(AlterChannelError::InvalidAmount(RgbChannel::Red, r_amt));
     }
     if g_amt > 255 {
-        panic!("Invalid g_amt passed. Amount to inc/dec channel by should be between -255 and 255");
+        return Err(AlterChannelError::InvalidAmount(RgbChannel::Green, g_amt));
     }
     if b_amt > 255 {
-        panic!("Invalid b_amt passed. Amount to inc/dec channel by should be between -255 and 255");
+        return Err(AlterChannelError::InvalidAmount(RgbChannel::Blue, b_amt));
     }
     let end = img.raw_pixels.len() - 4;
 
@@ -212,6 +246,8 @@ pub fn alter_channels(img: &mut PhotonImage, r_amt: i16, g_amt: i16, b_amt: i16)
         img.raw_pixels[i + 1] = g_val.clamp(0, 255) as u8;
         img.raw_pixels[i + 2] = b_val.clamp(0, 255) as u8;
     }
+
+    Ok(())
 }
 
 /// Set a certain channel to zero, thus removing the channel's influence in the pixels' final rendered colour.
@@ -227,17 +263,15 @@ pub fn alter_channels(img: &mut PhotonImage, r_amt: i16, g_amt: i16, b_amt: i16)
 ///
 /// ```no_run
 /// // For example, to remove the Red channel with a min_filter of 100:
-/// use photon_rs::channels::remove_channel;
+/// use photon_rs::channels::{remove_channel, RgbChannel};
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// remove_channel(&mut img, 0_usize, 100_u8);
+/// remove_channel(&mut img, RgbChannel::Red, 100_u8);
 /// ```
 #[wasm_bindgen]
-pub fn remove_channel(img: &mut PhotonImage, channel: usize, min_filter: u8) {
-    if channel > 2 {
-        panic!("Invalid channel index passed. Channel must be equal to 0, 1, or 2.");
-    }
+pub fn remove_channel(img: &mut PhotonImage, channel: RgbChannel, min_filter: u8) {
+    let channel = channel as usize;
     let end = img.raw_pixels.len() - 4;
     for i in (channel..end).step_by(4) {
         if img.raw_pixels[i] < min_filter {
@@ -264,7 +298,7 @@ pub fn remove_channel(img: &mut PhotonImage, channel: usize, min_filter: u8) {
 /// ```
 #[wasm_bindgen]
 pub fn remove_red_channel(img: &mut PhotonImage, min_filter: u8) {
-    remove_channel(img, 0, min_filter)
+    remove_channel(img, RgbChannel::Red, min_filter)
 }
 
 /// Remove the Green channel's influence in an image.
@@ -285,7 +319,7 @@ pub fn remove_red_channel(img: &mut PhotonImage, min_filter: u8) {
 /// ```
 #[wasm_bindgen]
 pub fn remove_green_channel(img: &mut PhotonImage, min_filter: u8) {
-    remove_channel(img, 1, min_filter)
+    remove_channel(img, RgbChannel::Green, min_filter)
 }
 
 /// Remove the Blue channel's influence in an image.
@@ -306,7 +340,7 @@ pub fn remove_green_channel(img: &mut PhotonImage, min_filter: u8) {
 /// ```
 #[wasm_bindgen]
 pub fn remove_blue_channel(img: &mut PhotonImage, min_filter: u8) {
-    remove_channel(img, 2, min_filter)
+    remove_channel(img, RgbChannel::Blue, min_filter)
 }
 
 /// Swap two channels.
@@ -320,29 +354,24 @@ pub fn remove_blue_channel(img: &mut PhotonImage, min_filter: u8) {
 ///
 /// ```no_run
 /// // For example, to swap the values of the Red channel with the values of the Blue channel:
-/// use photon_rs::channels::swap_channels;
+/// use photon_rs::channels::{RgbChannel, swap_channels};
 /// use photon_rs::native::open_image;
 ///
 /// let mut img = open_image("img.jpg").expect("File should open");
-/// swap_channels(&mut img, 0_usize, 2_usize);
+/// swap_channels(&mut img, RgbChannel::Red, RgbChannel::Blue);
 /// ```
 #[wasm_bindgen]
-pub fn swap_channels(img: &mut PhotonImage, mut channel1: usize, mut channel2: usize) {
-    if channel1 > 2 {
-        panic!("Invalid channel index passed. Channel1 must be equal to 0, 1, or 2.");
-    }
-    if channel2 > 2 {
-        panic!("Invalid channel index passed. Channel2 must be equal to 0, 1, or 2.");
-    }
+pub fn swap_channels(img: &mut PhotonImage, channel1: RgbChannel, channel2: RgbChannel) {
+    let mut channel1 = channel1 as usize;
+    let mut channel2 = channel2 as usize;
     let end = img.raw_pixels.len() - 4;
 
     if channel1 > channel2 {
         std::mem::swap(&mut channel1, &mut channel2);
     }
+    let difference = channel2 - channel1;
 
     for i in (channel1..end).step_by(4) {
-        let difference = channel2 - channel1;
-
         img.raw_pixels.swap(i, i + difference);
     }
 }
@@ -527,7 +556,7 @@ pub fn selective_hue_rotate(
 /// Selectively lighten an image.
 ///
 /// Only lighten the hue of a pixel if its colour matches or is similar to the RGB colour specified.
-/// For example, if a user wishes all pixels that are blue to be lightened, they can selectively specify  only the blue pixels to be changed.
+/// For example, if a user wishes all pixels that are blue to be lightened, they can selectively specify only the blue pixels to be changed.
 /// # Arguments
 /// * `img` - A PhotonImage.
 /// * `ref_color` - The `RGB` value of the reference color (to be compared to)
@@ -547,7 +576,33 @@ pub fn selective_hue_rotate(
 /// ```
 #[wasm_bindgen]
 pub fn selective_lighten(img: &mut PhotonImage, ref_color: Rgb, amt: f32) {
-    selective(img, "lighten", ref_color, amt)
+    selective(img, SelectiveMode::Lighten, ref_color, amt)
+}
+
+/// Selectively darken an image.
+///
+/// Only darken the hue of a pixel if its colour matches or is similar to the RGB colour specified.
+/// For example, if a user wishes all pixels that are blue to be darkened, they can selectively specify only the blue pixels to be changed.
+/// # Arguments
+/// * `img` - A PhotonImage.
+/// * `ref_color` - The `RGB` value of the reference color (to be compared to)
+/// * `amt` - The level from 0 to 1 to darken the hue by. Decreasing by 10% would have an `amt` of 0.1
+///
+/// # Example
+///
+/// ```no_run
+/// // For example, to only lighten the pixels that are of or similar to RGB value RGB{20, 40, 60}:
+/// use photon_rs::Rgb;
+/// use photon_rs::channels::selective_darken;
+/// use photon_rs::native::open_image;
+///
+/// let ref_color = Rgb::new(20_u8, 40_u8, 60_u8);
+/// let mut img = open_image("img.jpg").expect("File should open");
+/// selective_darken(&mut img, ref_color, 0.2_f32);
+/// ```
+#[wasm_bindgen]
+pub fn selective_darken(img: &mut PhotonImage, ref_color: Rgb, amt: f32) {
+    selective(img, SelectiveMode::Darken, ref_color, amt)
 }
 
 /// Selectively desaturate pixel colours which are similar to the reference colour provided.
@@ -574,7 +629,7 @@ pub fn selective_lighten(img: &mut PhotonImage, ref_color: Rgb, amt: f32) {
 /// ```
 #[wasm_bindgen]
 pub fn selective_desaturate(img: &mut PhotonImage, ref_color: Rgb, amt: f32) {
-    selective(img, "desaturate", ref_color, amt)
+    selective(img, SelectiveMode::Desaturate, ref_color, amt)
 }
 
 /// Selectively saturate pixel colours which are similar to the reference colour provided.
@@ -601,12 +656,32 @@ pub fn selective_desaturate(img: &mut PhotonImage, ref_color: Rgb, amt: f32) {
 /// ```
 #[wasm_bindgen]
 pub fn selective_saturate(img: &mut PhotonImage, ref_color: Rgb, amt: f32) {
-    selective(img, "saturate", ref_color, amt);
+    selective(img, SelectiveMode::Saturate, ref_color, amt);
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum SelectiveMode {
+    Desaturate,
+    Saturate,
+    Lighten,
+    Darken,
+}
+
+impl SelectiveMode {
+    fn apply(self, colour: Lch, amt: f32) -> Lch {
+        use SelectiveMode::*;
+        match self {
+            Desaturate => colour.desaturate(amt),
+            Saturate => colour.saturate(amt),
+            Lighten => colour.lighten(amt),
+            Darken => colour.darken(amt),
+        }
+    }
 }
 
 fn selective(
     mut photon_image: &mut PhotonImage,
-    mode: &'static str,
+    mode: SelectiveMode,
     ref_color: Rgb,
     amt: f32,
 ) {
@@ -640,14 +715,7 @@ fn selective(
                 .into_linear()
                 .into();
 
-            let new_color = match mode {
-                // Match a single value
-                "desaturate" => lch_colour.desaturate(amt),
-                "saturate" => lch_colour.saturate(amt),
-                "lighten" => lch_colour.lighten(amt),
-                "darken" => lch_colour.darken(amt),
-                _ => lch_colour.saturate(amt),
-            };
+            let new_color = mode.apply(lch_colour, amt);
 
             let final_color: Srgba = Srgba::from_linear(new_color.into()).into_format();
 

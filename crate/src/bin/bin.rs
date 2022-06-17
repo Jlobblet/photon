@@ -1,8 +1,8 @@
 extern crate photon_rs;
 extern crate time;
 
-use photon_rs::channels::alter_red_channel;
 use photon_rs::native::{open_image, save_image};
+use photon_rs::channels::alter_red_channel;
 use time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let start = Instant::now();
     // Increment the red channel by 40
-    alter_red_channel(&mut img, 40_i16);
+    alter_red_channel(&mut img, 40_i16)?;
 
     let output_img_path = "output.jpg";
 
